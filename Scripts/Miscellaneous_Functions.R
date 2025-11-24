@@ -159,7 +159,8 @@ plot_Density_byBcatStatus <- function(dataset, dataset_name, signature, signatur
   colnames(Bcat) <- c("TumorID","BcatStatus")
   
   select <- dataset[dataset$GeneSymbol %in% signature,]
-  select <- as.matrix(select[,-1])
+  index <-  which(colnames(dataset) == "GeneSymbol")
+  select <- as.matrix(select[,-index])
   select <- apply(select, 2, as.numeric)
   if(length(signature)>1){
     mean <- apply(select, 2, mean)

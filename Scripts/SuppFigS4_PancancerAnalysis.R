@@ -8,6 +8,7 @@ library(survival)
 library(survminer)
 library(ggsurvfit)
 library(GEOquery)
+library(DESeq2)
 
 source("./Scripts/Miscellaneous_Functions.R")
 
@@ -131,22 +132,33 @@ Heaton_Bcat <- readRDS(file="./ACC_datasets_formatted/Heaton/Metadata/Heaton_sam
 tcga_Bcat <- readRDS(file="./ACC_datasets_formatted/tcga/Metadata/tcga_sampleIDs_CTNNB1mut_ZNRF3mut_wt.RDS")
 colnames(tcga_Bcat)[1] <- "TumorID"
 
-# Read counts (average if multiple probes) and metadata -----------
-Assie <- readRDS(file="./ACC_datasets_formatted/Assie/Log2NormData_all_SampleID_ok_AvgMultipleProbesAnyGene.RDS")
+# Read metadata
 Assie_metadata <- read.csv("./ACC_datasets_formatted/Assie/Metadata/Metadata_Assie.csv")
 Assie_metadata <- Assie_metadata[!(is.na(Assie_metadata$BcatStatus)),]
 Assie_metadata$BcatStatus <- factor(Assie_metadata$BcatStatus, levels=c("CTNNB1","ZNRF3","wt"))
 
-Heaton <- readRDS(file="./ACC_datasets_formatted/Heaton/Log2NormData_all_SampleID_ok_AvgMultipleProbesAnyGene.RDS")
 Heaton_metadata <- read.csv("./ACC_datasets_formatted/Heaton/Metadata/Metadata_Heaton.csv")
 Heaton_metadata <- Heaton_metadata[Heaton_metadata$Histotype %in% c("ACC"),]
 Heaton_metadata <- Heaton_metadata[!(is.na(Heaton_metadata$BetaCateninStaining)),]
 Heaton_metadata$BcatStatus <- factor(Heaton_metadata$BetaCateninStaining, levels=c("Nuclear","Membrane"))
 
-tcga <- readRDS(file="./ACC_datasets_formatted/tcga/Log2Pseudocount1_DESeqNormCounts_tcga.RDS")
 tcga_metadata <- read.csv("./ACC_datasets_formatted/tcga/Metadata/Metadata_tcga.csv")
 tcga_metadata <- merge(tcga_metadata, tcga_Bcat, all=F, by="TumorID")
 tcga_metadata$BcatStatus <- factor(tcga_metadata$Alteration, levels=c("CTNNB1_mut","ZNRF3_mut","wt"))
+
+# Read Z-score transformed log2 normalized expression (average if multiple probes) and metadata -----------
+ACC_Zscored <- readRDS(file="./ACC_datasets_integration/Counts_Zscore_allDatasets.RDS")
+genes <- ACC_Zscored$GeneSymbol
+
+Assie <- ACC_Zscored[,grep("Assie",colnames(ACC_Zscored))]
+colnames(Assie) <- stringr::str_replace_all(colnames(Assie), paste0("Assie", "_"), "")
+Assie$GeneSymbol <- genes
+Heaton <- ACC_Zscored[,grep("Heaton",colnames(ACC_Zscored))]
+colnames(Heaton) <- stringr::str_replace_all(colnames(Heaton), paste0("Heaton", "_"), "")
+Heaton$GeneSymbol <- genes
+tcga <- ACC_Zscored[,grep("tcga",colnames(ACC_Zscored))]
+colnames(tcga) <- stringr::str_replace_all(colnames(tcga), paste0("tcga", "_"), "")
+tcga$GeneSymbol <- genes
 
 list_datasets <- list(tcga=tcga,Heaton=Heaton,Assie=Assie)
 
@@ -179,7 +191,8 @@ for(d in 1:length(list_datasets)){
     
     ### AUC, sensitivity, specificity values
     if(length(signature_genes)>1){
-      signature <- dataset[which(dataset$GeneSymbol %in% signature_genes),-1]
+      index <- which(colnames(dataset) == "GeneSymbol")
+      signature <- dataset[which(dataset$GeneSymbol %in% signature_genes),-index]
       mean <- apply(as.matrix(signature), 2, mean)
       mean <- as.data.frame(cbind(names(mean),mean))
       colnames(mean) <- c("patientId","Signature")
@@ -188,7 +201,8 @@ for(d in 1:length(list_datasets)){
       input <- input[input$Alteration %in% alterations,]
       input$Signature <- as.numeric(as.vector(input$Signature))
     }else{
-      singleGene <- dataset[which(dataset$GeneSymbol==signature_genes),-1]
+      index <- which(colnames(dataset) == "GeneSymbol")
+      singleGene <- dataset[which(dataset$GeneSymbol==signature_genes),-index]
       singleGene <- t(rbind(names(singleGene), singleGene))
       colnames(singleGene) <- c("patientId","Signature")
       colnames(Bcat_obj)[1] <- "patientId"
@@ -239,7 +253,23 @@ for(cancer in c("LIHC","UCEC","SKCM","STAD","PAAD","COAD")){
     signature_genes <- list_signatures[[s]]
     print(signature_name)
     
-    dataset <- readRDS(file=paste0(inpath, "TCGA-",cancer,"_DESeqLog2counts_", analysis,".RDS"))
+    dataset <- readRDS(file=paste0(out, "DEanalysis/TCGA-",cancer,"_DESeqLog2counts_", analysis,".RDS"))
+    index <- which(colnames(dataset) == "GeneSymbol")
+    expr <- as.matrix(dataset[,-index])
+    # Apply Z-score transformation
+    # Need to remove genes with st dev = 0 (for which Z-scores is NAs) 
+    check_sd <- apply(expr, 1, sd)
+    toRemove <- which(check_sd == 0)
+    if(length(toRemove)>0){ # it will be always 0 if only most variable genes selected. Otherwise it depends on the dataset
+      expr <- expr[-(toRemove),]
+      geneNames <- rownames(expr)
+    }else{
+      geneNames <- rownames(expr)
+    }
+    # Z-score normalization on a per gene basis
+    expr_Z <- as.data.frame(t(scale(t(expr))))
+    expr_Z$GeneSymbol <- geneNames
+    dataset <- expr_Z
     
     altered_vs_wt <- read.table(file=paste0(inpath, "/" ,cancer, "_sample_matrix.txt"), header=T, sep="\t")
     altered_vs_wt$sum <- rowSums(altered_vs_wt[,-1])
@@ -257,7 +287,8 @@ for(cancer in c("LIHC","UCEC","SKCM","STAD","PAAD","COAD")){
     alterations <- c("mut","wt")
     
     if(length(signature_genes)>1){
-      signature <- dataset[which(dataset$GeneSymbol %in% signature_genes),-1]
+      index <- which(colnames(dataset) == "GeneSymbol")
+      signature <- dataset[which(dataset$GeneSymbol %in% signature_genes),-index]
       mean <- apply(as.matrix(signature), 2, mean)
       mean <- as.data.frame(cbind(names(mean),mean))
       colnames(mean) <- c("patientId","Signature")
@@ -265,7 +296,8 @@ for(cancer in c("LIHC","UCEC","SKCM","STAD","PAAD","COAD")){
       input$Signature <- as.numeric(as.vector(input$Signature))
       input$Alteration <- factor(input$BcatMut)
     }else{
-      singleGene <- dataset[which(dataset$GeneSymbol==signature_genes),-1]
+      index <- which(colnames(dataset) == "GeneSymbol")
+      singleGene <- dataset[which(dataset$GeneSymbol==signature_genes),-index]
       singleGene <- t(rbind(names(singleGene), singleGene))
       colnames(singleGene) <- c("patientId","Signature")
       input <- merge(singleGene, altered_vs_wt, by="patientId")
@@ -311,7 +343,37 @@ ids$file_nameBIS <- stringr::str_replace(ids$file_name, ".rna_seq.augmented_star
 
 rna <- read.table(file=paste0(inpath, "/CPTAC3_UCEC/all_genes_mRNAexpr_unstranded_matrix.txt"), header=T, sep="\t") ### read input mRNA
 colnames(rna)[-1] <- stringr::str_replace_all(stringr::str_replace_all(colnames(rna)[-1], '\\.', "-"),'^X',"")
+genes <- rna$GeneSymbol
+rna <- as.matrix(rna[,-which(colnames(rna) == "GeneSymbol")])
+rna <- apply(rna, 2, as.numeric)
+rownames(rna) <- genes
 
+# Perform DESeq normalization
+sample_info <- as.data.frame(colnames(rna))
+colnames(sample_info) <- "patientId" 
+sample_info$patientId <- factor(sample_info$patientId)
+dds <- DESeq2::DESeqDataSetFromMatrix(
+  countData = rna,
+  colData = sample_info,
+  design = ~ patientId)
+dds <- estimateSizeFactors(dds)
+deseqNorm_UCEC <- counts(dds, normalized=TRUE)
+
+# Apply Z-score transformation
+# Need to remove genes with st dev = 0 (for which Z-scores is NAs) 
+check_sd <- apply(deseqNorm_UCEC, 1, sd)
+toRemove <- which(check_sd == 0)
+if(length(toRemove)>0){ # it will be always 0 if only most variable genes selected. Otherwise it depends on the dataset
+  deseqNorm_UCEC <- deseqNorm_UCEC[-(toRemove),]
+  geneNames <- rownames(deseqNorm_UCEC)
+}else{
+  geneNames <- rownames(deseqNorm_UCEC)
+}
+# Z-score normalization on a per gene basis
+expr_Z <- as.data.frame(t(scale(t(deseqNorm_UCEC))))
+rownames(expr_Z) <- geneNames
+
+# Metadata (CTNNB1 alterations)
 mut <- read.table(file=paste0(inpath, "/CPTAC3_UCEC/UCEC_CTNNB1mut_sample_matrix_from_cBioportal.txt"), header=T, sep="\t") ### read input mutations and CNAs manually downloaded from cBioportal
 mut$studyID.sampleId <- stringr::str_replace_all(mut$studyID.sampleId, "uec_cptac_gdc:", "")
 colnames(mut)[1] <- "cases.submitter_id"
@@ -330,11 +392,11 @@ metadata$Sample <- metadata$file_nameBIS
 
 heatmapAUC <- as.data.frame(matrix(ncol=5))
 colnames(heatmapAUC) <- c("dataset","cancer","signature","analysis","AUC")
-for(index in 1:length(list_signatures)){
+for(s in 1:length(list_signatures)){
   
-  print(index)
-  signature_name <- names(list_signatures)[index]
-  signature_genes <- list_signatures[[index]]
+  print(s)
+  signature_name <- names(list_signatures)[s]
+  signature_genes <- list_signatures[[s]]
   print(signature_name)
   
   CTNNB1mut <- metadata[!(metadata$CTNNB1.mutation == 0),]
@@ -342,8 +404,8 @@ for(index in 1:length(list_signatures)){
   wt <- metadata[metadata$CTNNB1.mutation == 0,]
   wt$BcatStatus <-"wt"
   CTNNB1mut_allWt <- rbind(CTNNB1mut,wt)
-  dataset <- rna
-  genes <- dataset$GeneSymbol
+  dataset <- expr_Z
+  genes <- rownames(expr_Z)
   dataset <- dataset[,which(colnames(dataset) %in% CTNNB1mut_allWt$Sample)]
   rownames(dataset) <- genes
   altered_vs_wt <- CTNNB1mut_allWt
@@ -360,8 +422,8 @@ for(index in 1:length(list_signatures)){
     input$BcatStatus <- factor(input$BcatStatus, levels=c("mut","wt"))
     input$Alteration <- input$BcatStatus
   }else{
-    singleGene <- as.matrix(dataset[which(rownames(dataset) %in% signature_genes),-1])
-    singleGene <- t(rbind(colnames(singleGene), singleGene))
+    singleGene <- as.matrix(dataset[which(rownames(dataset) %in% signature_genes),])
+    singleGene <- as.data.frame(cbind(rownames(singleGene), singleGene))
     colnames(singleGene) <- c("Sample","Signature")
     input <- merge(singleGene, altered_vs_wt, by="Sample")
     input$Alteration <- input$BcatStatus
@@ -381,9 +443,9 @@ for(index in 1:length(list_signatures)){
   saveRDS(file=paste0(out,"Cutpointr_", metric, "_", dataset_name, "_", cancer, "_", signature_name, "_", analysis, ".RDS"), summary(cp))
   
   ### Plot
-  dataset <- rna
-  GeneSymbol <- dataset$GeneSymbol
-  dataset <- apply(dataset[,-1], 2, as.numeric)
+  dataset <- expr_Z
+  GeneSymbol <- rownames(dataset)
+  dataset <- apply(dataset, 2, as.numeric)
   dataset <- apply(dataset, 2, function(x) log2(x+1))
   dataset <- as.data.frame(cbind(GeneSymbol, dataset))
   colnames(dataset)[1] <- "GeneSymbol"
@@ -410,6 +472,25 @@ dataset_name <- "Chiang"
 ### Read inputs
 metadata <- read.csv(file=paste0(inpath, "LIHC_Chiang/SupplementaryTable5.csv")) # read Bcat status
 dataset <- readRDS(file=paste0(inpath, "LIHC_Chiang/Chiang_norm_counts_AvgMultipleProbes.RDS")) # read counts
+genes <- dataset$GeneSymbol
+dataset <- as.matrix(dataset[,-which(colnames(dataset) == "GeneSymbol")])
+dataset <- apply(dataset, 2, as.numeric)
+rownames(dataset) <- genes
+
+# Apply Z-score transformation
+# Need to remove genes with st dev = 0 (for which Z-scores is NAs) 
+check_sd <- apply(dataset, 1, sd)
+toRemove <- which(check_sd == 0)
+if(length(toRemove)>0){ # it will be always 0 if only most variable genes selected. Otherwise it depends on the dataset
+  dataset <- dataset[-(toRemove),]
+  geneNames <- rownames(dataset)
+}else{
+  geneNames <- rownames(dataset)
+}
+# Z-score normalization on a per gene basis
+expr_Z <- as.data.frame(t(scale(t(dataset))))
+rownames(expr_Z) <- geneNames
+saveRDS(file=paste0(inpath, "/LIHC_Chiang/Chiang_norm_counts_AvgMultipleProbes_Zscore.RDS"), expr_Z)
 
 heatmapAUC <- as.data.frame(matrix(ncol=5))
 colnames(heatmapAUC) <- c("dataset","cancer","signature","analysis","AUC")
@@ -426,8 +507,8 @@ for(index in 1:length(list_signatures)){
   wt <- metadata[metadata$CTNNB1.mutation == 0,]
   wt$BcatStatus <-"wt"
   CTNNB1mut_allWt <- rbind(CTNNB1mut,wt)
-  genes <- dataset$GeneSymbol
-  dataset <- dataset[,which(colnames(dataset) %in% CTNNB1mut_allWt$Sample)]
+  genes <- rownames(expr_Z)
+  dataset <- expr_Z[,which(colnames(expr_Z) %in% CTNNB1mut_allWt$Sample)]
   rownames(dataset) <- genes
   altered_vs_wt <- CTNNB1mut_allWt
   alterations <- c("mut","wt")
@@ -444,7 +525,7 @@ for(index in 1:length(list_signatures)){
     input$Alteration <- input$BcatStatus
     input <- input[input$Alteration %in% alterations,]
   }else{
-    singleGene <- as.matrix(dataset[which(rownames(dataset) %in% signature_genes),-1])
+    singleGene <- as.matrix(dataset[which(rownames(dataset) %in% signature_genes),])
     singleGene <- t(rbind(colnames(singleGene), singleGene))
     colnames(singleGene) <- c("Sample","Signature")
     input <- merge(singleGene, altered_vs_wt, by="Sample")
@@ -452,7 +533,6 @@ for(index in 1:length(list_signatures)){
     input <- input[input$Alteration %in% alterations,]
     input$Signature <- as.numeric(as.vector(input$Signature))
   }
-  
   
   ### Estimate sensitivity, specificity, AUC
   if(metric == "sum_sens_spec"){
@@ -466,9 +546,9 @@ for(index in 1:length(list_signatures)){
   saveRDS(file=paste0(out,"Cutpointr_", metric, "_", dataset_name, "_", cancer, "_", signature_name, "_", analysis, ".RDS"), summary(cp))
   
   ### Plot
-  dataset <- readRDS(file=paste0(inpath, "/LIHC_Chiang/Chiang_norm_counts_AvgMultipleProbes.RDS"))
-  GeneSymbol <- dataset$GeneSymbol
-  dataset <- apply(dataset[,-1], 2, as.numeric)
+  dataset <- readRDS(file=paste0(inpath, "/LIHC_Chiang/Chiang_norm_counts_AvgMultipleProbes_Zscore.RDS"))
+  GeneSymbol <- rownames(dataset)
+  dataset <- apply(dataset, 2, as.numeric)
   dataset <- as.data.frame(cbind(GeneSymbol, dataset))
   colnames(dataset)[1] <- "GeneSymbol"
   plot_out <- plot_Density_byBcatStatus(dataset=dataset, dataset_name=dataset_name, signature=signature_genes, signatureName=signature_name, Bcat=input[,c('Sample','BcatStatus')])

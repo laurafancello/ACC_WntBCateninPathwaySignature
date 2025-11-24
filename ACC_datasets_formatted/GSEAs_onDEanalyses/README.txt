@@ -1,2 +1,0 @@
-GSEAs on Hallmarks gene sets generated on fold changes from differential expression analyses (performed using limme for microarrays or DESeq2 for RNAseq).
-Differential expression analysis was performed comparing CTNNB1 mutated tumors versus CTNNB1 wt tumors (and excluding ZNRF3 altered tumors) fro Assie and TCGA) or comparing tumors with B-Catenin nuclear accumulation vs membrane localization for Heaton dataset.
