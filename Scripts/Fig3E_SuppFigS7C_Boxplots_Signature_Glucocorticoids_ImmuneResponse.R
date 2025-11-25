@@ -162,103 +162,103 @@ for(pathway in names(genesOfInterest)){
 
 
 # Nb CTNNB1 mutated in cortisol vs non-functioning vs other --------
-metadata_all$Cortisol_None_NA_Other <- NA
-metadata_all[metadata_all$HormoneExpressionSimplified %in% c("None"),]$Cortisol_None_NA_Other <- "non-functioning"
-metadata_all[metadata_all$HormoneExpressionSimplified %in% c("Cortisol","Cortisol+Androgen","Mineralocorticoids+Cortisol"),]$Cortisol_None_NA_Other <- "cortisol"
-metadata_all[metadata_all$HormoneExpressionSimplified %in% c("Mineralocorticoids", "Androgen_Estrogen"),]$Cortisol_None_NA_Other <- "other"
-
-png(paste0(outPath, "Proportion_CTNNB1mut_Cortisol_NonFunctioning_Other_NA.png"))
-ggplot(data=metadata_all, aes(y=BcatStatusGeneral)) + geom_bar() +
-  theme_bw() + facet_wrap(.~DatasetName+Cortisol_None_NA_Other)
-dev.off()
+# metadata_all$Cortisol_None_NA_Other <- NA
+# metadata_all[metadata_all$HormoneExpressionSimplified %in% c("None"),]$Cortisol_None_NA_Other <- "non-functioning"
+# metadata_all[metadata_all$HormoneExpressionSimplified %in% c("Cortisol","Cortisol+Androgen","Mineralocorticoids+Cortisol"),]$Cortisol_None_NA_Other <- "cortisol"
+# metadata_all[metadata_all$HormoneExpressionSimplified %in% c("Mineralocorticoids", "Androgen_Estrogen"),]$Cortisol_None_NA_Other <- "other"
+# 
+# png(paste0(outPath, "Proportion_CTNNB1mut_Cortisol_NonFunctioning_Other_NA.png"))
+# ggplot(data=metadata_all, aes(y=BcatStatusGeneral)) + geom_bar() +
+#   theme_bw() + facet_wrap(.~DatasetName+Cortisol_None_NA_Other)
+# dev.off()
 
 
 #  Boxplot all MHC molecules in signature high vs low based on cortisol ---------------------
-gene_set <- ""
-majorHistocompatibilityComplex=c("HLA-G","HLA-E","HLA-DRB1","HLA-DRA","HLA-DQA1","HLA-DQB1","HLA-DPA1","HLA-DPB1","HLA-DOA","HLA-DMA")
-pathway <- "majorHistocompatibilityComplex"
-genes <- majorHistocompatibilityComplex
-
-for(gene in genes){
-  print(gene)
-  select <- df[which(rownames(df) %in% gene),]
-  select <- as.matrix(select)
-  select <- apply(select, 2, as.numeric)
-  select <- as.data.frame(cbind(names(select), select))
-  colnames(select) <- c("TumorID", gene)
-  metadata_all <- merge(metadata_all, select, by="TumorID", all.x=T, all.y=F)
-  metadata_all[,gene] <- as.numeric(as.vector(metadata_all[,gene]))
-}
-
-hormones <- "cortisol"
-suffix <- "Cortisol"
-var<- "CortisolYesNo"
-metadata_all$CortisolYesNo <- factor(metadata_all$CortisolYesNo, levels=c("no","yes",NA))
-subset <- metadata_all[,c("TumorID",genes,"CortisolYesNo", "BcatSignatureMeanZScore_group")]
-  
-group_counts <- subset %>%
-    group_by(BcatSignatureMeanZScore_group, get(var)) %>%
-    summarise(n = n(), .groups = "drop")
-  
-print(paste0(gene_set, " ", pathway, ", ", hormones, ", n_BcatLevels=", n_BcatLevels, "--------------------"))
-print(group_counts)
-  
-subset_long <- tidyr::pivot_longer(subset, cols = 2:11, names_to = "Gene", values_to = "Expression")
-my_comparisons_signature <- list(c(levels(subset_long$BcatSignatureMeanZScore_group)[1],levels(subset_long$BcatSignatureMeanZScore_group)[2]))
-
-png(paste0(outPath, "Boxplot_MHCs_bySignature_byCortisol.png"), width=1800, height = 900)
-print(ggplot(data=subset_long, aes(x=BcatSignatureMeanZScore_group , y=Expression,  fill=BcatSignatureMeanZScore_group)) +
-        geom_boxplot() + 
-        theme_bw(base_size = 14) +
-        ggtitle("Signature expression levels") + 
-        facet_wrap(.~get(var)+Gene, nrow=3, scales="free_x") +
-        stat_compare_means(comparisons=my_comparisons_signature, method="wilcox.test", label.y=5) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))) 
-dev.off()
+# gene_set <- ""
+# majorHistocompatibilityComplex=c("HLA-G","HLA-E","HLA-DRB1","HLA-DRA","HLA-DQA1","HLA-DQB1","HLA-DPA1","HLA-DPB1","HLA-DOA","HLA-DMA")
+# pathway <- "majorHistocompatibilityComplex"
+# genes <- majorHistocompatibilityComplex
+# 
+# for(gene in genes){
+#   print(gene)
+#   select <- df[which(rownames(df) %in% gene),]
+#   select <- as.matrix(select)
+#   select <- apply(select, 2, as.numeric)
+#   select <- as.data.frame(cbind(names(select), select))
+#   colnames(select) <- c("TumorID", gene)
+#   metadata_all <- merge(metadata_all, select, by="TumorID", all.x=T, all.y=F)
+#   metadata_all[,gene] <- as.numeric(as.vector(metadata_all[,gene]))
+# }
+# 
+# hormones <- "cortisol"
+# suffix <- "Cortisol"
+# var<- "CortisolYesNo"
+# metadata_all$CortisolYesNo <- factor(metadata_all$CortisolYesNo, levels=c("no","yes",NA))
+# subset <- metadata_all[,c("TumorID",genes,"CortisolYesNo", "BcatSignatureMeanZScore_group")]
+#   
+# group_counts <- subset %>%
+#     group_by(BcatSignatureMeanZScore_group, get(var)) %>%
+#     summarise(n = n(), .groups = "drop")
+#   
+# print(paste0(gene_set, " ", pathway, ", ", hormones, ", n_BcatLevels=", n_BcatLevels, "--------------------"))
+# print(group_counts)
+#   
+# subset_long <- tidyr::pivot_longer(subset, cols = 2:11, names_to = "Gene", values_to = "Expression")
+# my_comparisons_signature <- list(c(levels(subset_long$BcatSignatureMeanZScore_group)[1],levels(subset_long$BcatSignatureMeanZScore_group)[2]))
+# 
+# png(paste0(outPath, "Boxplot_MHCs_bySignature_byCortisol.png"), width=1800, height = 900)
+# print(ggplot(data=subset_long, aes(x=BcatSignatureMeanZScore_group , y=Expression,  fill=BcatSignatureMeanZScore_group)) +
+#         geom_boxplot() + 
+#         theme_bw(base_size = 14) +
+#         ggtitle("Signature expression levels") + 
+#         facet_wrap(.~get(var)+Gene, nrow=3, scales="free_x") +
+#         stat_compare_means(comparisons=my_comparisons_signature, method="wilcox.test", label.y=5) +
+#         theme(axis.text.x = element_text(angle = 45, hjust = 1))) 
+# dev.off()
 
 
 
 #  Boxplot all immune checkpoint molecules in signature high vs low based on cortisol ---------------------
-gene_set <- ""
-ImmuneCheckpoint <- c("CD274","CTLA4","HAVCR2","LAG3","PDCD1","PDCD1LG2","TIGIT","SIGLEC15")
-pathway <- "ImmuneCheckpoint"
-genes <- ImmuneCheckpoint
-
-for(gene in genes){
-  print(gene)
-  select <- df[which(rownames(df) %in% gene),]
-  select <- as.matrix(select)
-  select <- apply(select, 2, as.numeric)
-  select <- as.data.frame(cbind(names(select), select))
-  colnames(select) <- c("TumorID", gene)
-  metadata_all <- merge(metadata_all, select, by="TumorID", all.x=T, all.y=F)
-  metadata_all[,gene] <- as.numeric(as.vector(metadata_all[,gene]))
-}
-
-hormones <- "cortisol"
-suffix <- "Cortisol"
-var<- "CortisolYesNo"
-metadata_all$CortisolYesNo <- factor(metadata_all$CortisolYesNo, levels=c("no","yes",NA))
-subset <- metadata_all[,c("TumorID",genes,"CortisolYesNo", "BcatSignatureMeanZScore_group")]
-
-group_counts <- subset %>%
-  group_by(BcatSignatureMeanZScore_group, get(var)) %>%
-  summarise(n = n(), .groups = "drop")
-
-print(paste0(gene_set, " ", pathway, ", ", hormones, ", n_BcatLevels=", n_BcatLevels, "--------------------"))
-print(group_counts)
-
-subset_long <- tidyr::pivot_longer(subset, cols = 2:9, names_to = "Gene", values_to = "Expression")
-my_comparisons_signature <- list(c(levels(subset_long$BcatSignatureMeanZScore_group)[1],levels(subset_long$BcatSignatureMeanZScore_group)[2]))
-
-png(paste0(outPath, "Boxplot_ImmuneCheckpoint_bySignature_byCortisol.png"), width=1800, height = 900)
-print(ggplot(data=subset_long, aes(x=BcatSignatureMeanZScore_group , y=Expression,  fill=BcatSignatureMeanZScore_group)) +
-        geom_boxplot() + 
-        theme_bw(base_size = 14) +
-        ggtitle("Signature expression levels") + 
-        facet_wrap(.~get(var)+Gene, nrow=3, scales="free_x") +
-        stat_compare_means(comparisons=my_comparisons_signature, method="wilcox.test", label.y=3) +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))) 
-dev.off()
-
-
+# gene_set <- ""
+# ImmuneCheckpoint <- c("CD274","CTLA4","HAVCR2","LAG3","PDCD1","PDCD1LG2","TIGIT","SIGLEC15")
+# pathway <- "ImmuneCheckpoint"
+# genes <- ImmuneCheckpoint
+# 
+# for(gene in genes){
+#   print(gene)
+#   select <- df[which(rownames(df) %in% gene),]
+#   select <- as.matrix(select)
+#   select <- apply(select, 2, as.numeric)
+#   select <- as.data.frame(cbind(names(select), select))
+#   colnames(select) <- c("TumorID", gene)
+#   metadata_all <- merge(metadata_all, select, by="TumorID", all.x=T, all.y=F)
+#   metadata_all[,gene] <- as.numeric(as.vector(metadata_all[,gene]))
+# }
+# 
+# hormones <- "cortisol"
+# suffix <- "Cortisol"
+# var<- "CortisolYesNo"
+# metadata_all$CortisolYesNo <- factor(metadata_all$CortisolYesNo, levels=c("no","yes",NA))
+# subset <- metadata_all[,c("TumorID",genes,"CortisolYesNo", "BcatSignatureMeanZScore_group")]
+# 
+# group_counts <- subset %>%
+#   group_by(BcatSignatureMeanZScore_group, get(var)) %>%
+#   summarise(n = n(), .groups = "drop")
+# 
+# print(paste0(gene_set, " ", pathway, ", ", hormones, ", n_BcatLevels=", n_BcatLevels, "--------------------"))
+# print(group_counts)
+# 
+# subset_long <- tidyr::pivot_longer(subset, cols = 2:9, names_to = "Gene", values_to = "Expression")
+# my_comparisons_signature <- list(c(levels(subset_long$BcatSignatureMeanZScore_group)[1],levels(subset_long$BcatSignatureMeanZScore_group)[2]))
+# 
+# png(paste0(outPath, "Boxplot_ImmuneCheckpoint_bySignature_byCortisol.png"), width=1800, height = 900)
+# print(ggplot(data=subset_long, aes(x=BcatSignatureMeanZScore_group , y=Expression,  fill=BcatSignatureMeanZScore_group)) +
+#         geom_boxplot() + 
+#         theme_bw(base_size = 14) +
+#         ggtitle("Signature expression levels") + 
+#         facet_wrap(.~get(var)+Gene, nrow=3, scales="free_x") +
+#         stat_compare_means(comparisons=my_comparisons_signature, method="wilcox.test", label.y=3) +
+#         theme(axis.text.x = element_text(angle = 45, hjust = 1))) 
+# dev.off()
+# 
+# 
