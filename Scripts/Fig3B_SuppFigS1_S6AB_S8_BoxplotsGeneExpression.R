@@ -322,3 +322,54 @@ for(dataset_name in c("Caramuta","JouinotFFPE","Demeure","Assie","Heaton","tcga"
   }
 }
 
+
+### Plot gene expression across histotypes (FOR FIGURE S8) -----------
+genes_of_interest <- "MYC"
+for(dataset_name in c("Caramuta","JouinotFFPE","Demeure","Heaton")){
+  print(dataset_name)
+  
+  # Read metadata and counts
+  metadata <- read.csv(file=paste0(inPath, dataset_name, "/Metadata/Metadata_", dataset_name,".csv"))
+  metadata$Histotype <- stringr::str_replace_all(metadata$Histotype, "ACTH-independant Macronodular Adrenal Hyperplasia", "Other")
+  metadata$Histotype <- stringr::str_replace_all(metadata$Histotype, "Uncertain malignant potential ACT", "Other")
+  
+  dataset <- readRDS(file=paste0(inPath, dataset_name, "/Log2NormData_all_SampleID_ok.RDS"))
+  
+  # For genes with multiple probes use their mean value
+  if(length(dataset$GeneSymbol) > length(unique(dataset$GeneSymbol))){
+    dataset_nr <- dataset %>%
+      group_by(GeneSymbol) %>%
+      mutate(across(!(starts_with(c("GeneSymbol"))), ~ mean(.x, na.rm = TRUE), .names = "avg_{.col}")) %>%
+      ungroup() %>% select(starts_with(c("GeneSymbol","avg"))) %>% unique()
+    
+    colnames(dataset_nr) <- stringr:: str_replace_all(colnames(dataset_nr), "avg_", "")
+  }else{
+    dataset_nr <- dataset
+  }
+  
+  # Extract expression of gene of interest
+  for(gene in genes_of_interest){
+    print(gene)
+    select <- dataset_nr[which(dataset_nr$GeneSymbol %in% c(gene)),-1]
+    if(nrow(select)>0){
+      select <- apply(select, 2, as.numeric)
+      select <- as.data.frame(cbind(names(select),as.numeric(as.vector(select))))
+      colnames(select) <- c("TumorID",gene)
+      metadata_select <- merge(metadata, select, by="TumorID", all=T)
+      metadata_select[,gene] <- as.numeric(as.vector(metadata_select[,gene]))
+      
+      pdf(paste0(outPath, gene, "_byHistotype_", dataset_name, ".pdf"), width=10, height = 10, useDingbats = FALSE)
+      print(ggplot(data=metadata_select, aes(x=Histotype, y=get(gene))) +
+              geom_boxplot() + geom_jitter() +
+              #scale_color_gradientn(colours=c("green4","yellow","red")) +
+              ggtitle(dataset_name) +
+              ylab("MYC mRNA expression") +
+              theme_bw() +
+              theme(axis.text = element_text(size = 17), axis.title = element_text(size = 20), plot.title = element_text(size = 30)))
+      
+      dev.off()
+    }
+  }
+}
+
+
