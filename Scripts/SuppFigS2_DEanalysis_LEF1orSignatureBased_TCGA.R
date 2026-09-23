@@ -197,3 +197,7 @@ png(paste0(outPath, "/GSEAs/", dataset_name, RankedListType, "_", marker, cutoff
 print(plotEnrichment(msigdbr_list_H_nr[[selectPathway]],
                      Ranks_ok) + labs(title=ggtitle(paste0(selectPathway, ", ", dataset_name, "\n p=", pval, ", padj=", padj, ", ES=", ES, ", NES=", NES))))
 dev.off()
+pdf(paste0(outPath, "/GSEAs/", dataset_name, RankedListType, "_", marker, cutoffType, "_HALLMARK_WNT_BETA_CATENIN_SIGNALING.pdf"), useDingbats = FALSE)
+print(plotEnrichment(msigdbr_list_H_nr[[selectPathway]],
+                     Ranks_ok) + labs(title=ggtitle(paste0(selectPathway, ", ", dataset_name, "\n p=", pval, ", padj=", padj, ", ES=", ES, ", NES=", NES))))
+dev.off()
