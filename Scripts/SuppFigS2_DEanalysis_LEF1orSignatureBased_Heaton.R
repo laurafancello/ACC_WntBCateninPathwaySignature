@@ -140,9 +140,9 @@ if(identical(colnames(dataset), vec$GSM_ID)){ # Check that counts and metadata h
   pdf(paste0(outPath, "Volcano_",outFile, "_BcatSignificant.pdf"), width=10, height = 10, useDingbats = FALSE)
   print(plots$BcatSignificant)
   dev.off()
-  pdf(paste0(outPath, "Volcano_",outFile, "_9selectedBcatTargets.pdf"), width=10, height = 10, useDingbats = FALSE)
-  print(plots$NineSignatureTargets)
-  dev.off()
+  #pdf(paste0(outPath, "Volcano_",outFile, "_9selectedBcatTargets.pdf"), width=10, height = 10, useDingbats = FALSE)
+  #print(plots$NineSignatureTargets)
+  #dev.off()
   
   ### Output for iRegulon
   if (!(file.exists(paste0(outPath, "/SignificantUpAndDownDEgenes_iRegulon/")))){
