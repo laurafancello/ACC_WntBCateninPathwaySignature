@@ -78,9 +78,11 @@ volcanoPlots_BcatTargets <- function(outPath, res, dataset, analysis){
     geom_vline(xintercept = c(-0.5, 0.5), col = "black", linetype = 'dashed') +
     geom_hline(yintercept = -log10(0.1), col = "black", linetype = 'dashed') +
     geom_point(size = 1, alpha=0.5) +
-    geom_text_repel(max.overlaps = Inf) +
+    geom_text_repel(size=4, max.overlaps = Inf, max.iter= 100000, max.time=120) +
     scale_color_manual(values = c("gray","black")) +
-    ggtitle(paste0(dataset, ", ", analysis, " (label sign DE BcatTargets)")) + theme_bw()
+    ggtitle(paste0(dataset, ", ", analysis, " (label sign DE BcatTargets)")) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 15), axis.title = element_text(size = 20), legend.position = "none")
   
   # Show selected B-cat targets independently of significance
   res$label1 <- ""
