@@ -2,6 +2,9 @@ library(GEOquery)
 library(ggplot2)
 library(ggrepel)
 options(digits=15)
+library(SummarizedExperiment)
+library(msigdbr)
+library(fgsea)
 source("./Scripts/Miscellaneous_Functions.R")
 inPath <- "./ACC_datasets_formatted/MicroarrayAnnotations/"
 out <- "./DEanalyses_ACC/"
@@ -69,6 +72,7 @@ metadata <- metadata[metadata$Histotype == "ACC",]
 write.csv(file="./ACC_datasets_formatted/Heaton/Metadata/Metadata_Heaton_onlyACCs.csv", metadata)
 
 # SPLIT INTO GROUPS BASED ON LEF1 OR SIGNATURE MEDIAN CUTOFF ----------------------------------
+dataset <- readRDS(file="./ACC_datasets_formatted/Heaton/Log2NormData_all_onlyACCs.RDS")
 if(marker == "LEF1"){
   Gene <- dataset[,1]
   Probe <- dataset[,2]
@@ -78,7 +82,7 @@ if(marker == "LEF1"){
   select <- apply(select,2,as.numeric)
   select <- apply(select,2,mean) # since several probes for same gene take their average
   vec <- as.data.frame(cbind(names(select), select))
-  colnames(vec) <- c("GSM_ID",gene)
+  colnames(vec) <- c("GSM_ID",marker)
   vec[,marker] <- as.numeric(as.vector(vec[,marker]))
   cutoff <- round(median(vec[,marker]), digits=2)
   vec$Level <- NA
@@ -133,6 +137,12 @@ if(identical(colnames(dataset), vec$GSM_ID)){ # Check that counts and metadata h
   # png(paste0(outPath, "Volcano_",outFile, "_9selectedBcatTargets.png"), width=900, height = 900)
   # print(plots$NineSignatureTargets)
   # dev.off()
+  pdf(paste0(outPath, "Volcano_",outFile, "_BcatSignificant.pdf"), width=10, height = 10, useDingbats = FALSE)
+  print(plots$BcatSignificant)
+  dev.off()
+  pdf(paste0(outPath, "Volcano_",outFile, "_9selectedBcatTargets.pdf"), width=10, height = 10, useDingbats = FALSE)
+  print(plots$NineSignatureTargets)
+  dev.off()
   
   ### Output for iRegulon
   if (!(file.exists(paste0(outPath, "/SignificantUpAndDownDEgenes_iRegulon/")))){
