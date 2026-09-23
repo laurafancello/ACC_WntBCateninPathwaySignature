@@ -57,7 +57,7 @@ norm_log2 <- as.data.frame(cbind(GeneSymbol,norm_log2))
 
 ### Split samples into groups based on cutoff
 if(marker == "LEF1"){
-  select <- norm_log2[norm_log2$GeneSymbol %in% c(gene),]
+  select <- norm_log2[norm_log2$GeneSymbol %in% c(marker),]
   select <- as.matrix(select[,-1])
   select <- apply(select, 2, as.numeric)
   vec <- as.data.frame(cbind(names(select), select))
@@ -122,6 +122,12 @@ if(identical(colnames(rna), sample_info$TumorID)){ # Check that counts and sampl
   # png(paste0(outPath, "Volcano_",outFile, "_9SignatureBcatTargets.png"), width=900, height = 900)
   # print(plots$NineSignatureTargets)
   # dev.off()
+  pdf(paste0(outPath, "Volcano_",outFile, "_SignificantBCateninTargets.pdf"), width=10, height = 10, useDingbats = FALSE)
+  print(plots$BcatSignificant)
+  dev.off()
+  #pdf(paste0(outPath, "Volcano_",outFile, "_9SignatureBcatTargets.pdf"), width=10, height = 10, useDingbats = FALSE)
+  #print(plots$NineSignatureTargets)
+  #dev.off()
   
   ### Output sign up and down genes for iRegulon
   if (!(file.exists(paste0(outPath, "/SignificantUpAndDownDEgenes_iRegulon/")))){
