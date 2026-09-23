@@ -1,6 +1,9 @@
 library(GEOquery)
 library(ggplot2)
 library(ggrepel)
+library(SummarizedExperiment)
+library(msigdbr)
+library(fgsea)
 options(digits=15)
 source("./Scripts/Miscellaneous_Functions.R")
 inPath <- "./ACC_datasets_formatted/MicroarrayAnnotations/"
@@ -60,6 +63,7 @@ colnames(dataset)[1:2] <- c("Probe","Gene")
 saveRDS(file="./ACC_datasets_formatted/Assie/Log2NormData_all.RDS", dataset)
 
 # SPLIT INTO GROUPS BASED ON LEF1/SIGNATURE MEDIAN CUTOFF ----------------------------------
+dataset <- readRDS("./ACC_datasets_formatted/Assie/Log2NormData_all.RDS")
 if(marker == "LEF1"){
   select <- dataset[dataset$Gene %in% c(marker),]
   select <- as.matrix(select[,-which(colnames(select) %in% c("Gene","Probe"))]) # Remove character columns Gene and Probe
@@ -119,6 +123,12 @@ if(identical(colnames(dataset), vec$TumorID)){ # Check that counts and metadata 
   print(plots$BcatSignificant)
   dev.off()
   png(paste0(outPath, "Volcano_",outFile, "_9selectedBcatTargets.png"), width=900, height = 900)
+  print(plots$NineSignatureTargets)
+  dev.off()
+  pdf(paste0(outPath, "Volcano_",outFile, "_BcatSignificant.pdf"), width=10, height = 10, useDingbats = FALSE)
+  print(plots$BcatSignificant)
+  dev.off()
+  pdf(paste0(outPath, "Volcano_",outFile, "_9selectedBcatTargets.pdf"), width=10, height = 10, useDingbats = FALSE)
   print(plots$NineSignatureTargets)
   dev.off()
   
