@@ -249,6 +249,28 @@ for(gene in genesOfInterest){
   }else{print("Gene not detected in all datasets")}
 }
 
+# Plot expression candidate new B-Catenin targets for Figure S8 ------------------------------
+genesOfInterest <- c("MYC","CDK6","DACH1","ABR","EFNA3","FAM169A","JARID2","LTBP1","SYTL2")
+
+analysis <- "BcatMutWt"
+# PDF
+pdf(file=paste0(outPath, gene, "_BoxplotExpr_allPublicCochinACCDatasets_",analysis,"_2025_04_25_DefForPaper_AvgMultipleProbes.pdf"),  useDingbats = F, width=20)
+for(gene in genesOfInterest){
+  print(gene)
+  foundAssie <- nrow(input_boxplot_Assie[input_boxplot_Assie$GeneSymbol == gene,])
+  foundHeaton <- nrow(input_boxplot_Heaton[input_boxplot_Heaton$GeneSymbol == gene,])
+  foundTcga <- nrow(input_boxplot_tcga[input_boxplot_tcga$GeneSymbol == gene,])
+  foundLefevre<- nrow(input_boxplot_Lefevre[input_boxplot_Lefevre$GeneSymbol == gene,])
+  if( (foundAssie>0) & (foundHeaton>0) & (foundTcga>0) ){
+    tcga <- plotTCGA(input_boxplot=input_boxplot_tcga, gene=gene, analysis=analysis)
+    Assie <- plotAssie(input_boxplot=input_boxplot_Assie, gene=gene, analysis=analysis)
+    Heaton <- plotHeaton(input_boxplot=input_boxplot_Heaton, gene=gene, analysis=analysis)
+    Lefevre <- plotLefevre(input_boxplot=input_boxplot_Lefevre, gene=gene, n_expr=3, n_repr=3, n_expr_ctrlshRNA_noDoxy=1, n_expr_ctrlshRNA_withDoxy=1)
+    title1=text_grob(gene, size = 20, face = "bold")
+    grid.arrange(Assie,Heaton,tcga,Lefevre, nrow=1, ncol=4, top=title1)
+  }else{print("Gene not detected in all datasets")}
+}
+dev.off()
 
 
 # 2. GENES EXPRESSION ACROSS HYSTOTYPE ------------------------------------
@@ -323,7 +345,7 @@ for(dataset_name in c("Caramuta","JouinotFFPE","Demeure","Assie","Heaton","tcga"
 }
 
 
-### Plot gene expression across histotypes (FOR FIGURE S8) -----------
+### Plot gene expression across histotypes (FOR FIGURE S6A) -----------
 genes_of_interest <- "MYC"
 for(dataset_name in c("Caramuta","JouinotFFPE","Demeure","Heaton")){
   print(dataset_name)
