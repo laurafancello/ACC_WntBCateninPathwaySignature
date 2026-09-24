@@ -254,7 +254,7 @@ genesOfInterest <- c("MYC","CDK6","DACH1","ABR","EFNA3","FAM169A","JARID2","LTBP
 
 analysis <- "BcatMutWt"
 # PDF
-pdf(file=paste0(outPath, gene, "_BoxplotExpr_allPublicCochinACCDatasets_",analysis,"_2025_04_25_DefForPaper_AvgMultipleProbes.pdf"),  useDingbats = F, width=20)
+pdf(file=paste0(outPath, "BoxplotExpr_allPublicCochinACCDatasets_BcatMutWt_AvgProbes_CandidateNewBCatTargets.pdf"),  useDingbats = F, width=20)
 for(gene in genesOfInterest){
   print(gene)
   foundAssie <- nrow(input_boxplot_Assie[input_boxplot_Assie$GeneSymbol == gene,])
