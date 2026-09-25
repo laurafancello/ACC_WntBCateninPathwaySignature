@@ -172,6 +172,28 @@ plotLefevre <- function(input_boxplot, gene, n_expr, n_repr, n_expr_ctrlshRNA_no
   }
 }
 
+### Define function to plot Lefevre boxplots EXCLUDING CONTROLS ---------------------------------
+plotLefevre_noControls <- function(input_boxplot, gene, n_expr, n_repr){
+  df_sub <- input_boxplot[input_boxplot$GeneSymbol==gene, ]
+  if(nrow(df_sub)>0){
+    
+    df_sub$BcatStatus <- stringr::str_replace(df_sub$BcatStatus, "expressed", paste0("expressed \n(n=",n_expr, ")"))
+    df_sub$BcatStatus <- stringr::str_replace(df_sub$BcatStatus, "repressed", paste0("repressed \n(n=", n_repr, ")"))
+    df_sub$BcatStatus <- factor(df_sub$BcatStatus, levels=c(paste0("expressed \n(n=",n_expr, ")"),
+                                                            paste0("repressed \n(n=", n_repr, ")")))
+    
+    my_comparisons <- list(c(levels(df_sub$BcatStatus)[1],levels(df_sub$BcatStatus)[2]))
+    p <- ggplot(data=df_sub, aes(y=Value, x=BcatStatus)) + geom_boxplot(fill=c("indianred","lightblue")) +
+      geom_jitter() +
+      stat_compare_means(comparisons=my_comparisons, method="t.test") +
+      labs(title="Lefevre (H295R cell line)",
+           y=paste(gene, "expression (log2 norm counts)"),
+           x="") +
+      theme_bw()
+    return(p)
+  }
+}
+
 ### Define function to plot Heaton boxplots ---------------------------------
 plotHeaton <- function(input_boxplot, gene, analysis){
   
@@ -202,6 +224,11 @@ plotHeaton <- function(input_boxplot, gene, analysis){
 
 
 # Plot expression known B-catenin targets ------------------------------
+input_boxplot_Assie <- readRDS(file=paste0(outPath, "/input_boxplot_Assie.RDS"))
+input_boxplot_tcga <- readRDS(file=paste0(outPath, "/input_boxplot_tcga.RDS"))
+input_boxplot_Heaton <- readRDS(file=paste0(outPath, "/input_boxplot_Heaton.RDS"))
+input_boxplot_Lefevre <- readRDS(file=paste0(outPath, "/input_boxplot_Lefevre.RDS"))
+
 genesOfInterest <- c("ABCB1", "AFF3", "AXIN2", "BCL2L2", "BIRC5", "CCND1", "CDC25A", "CDKN2A", "CDX1", "CLDN1", "CTLA4", "DKK1", "EDN1", "ENAH", "ENC1", "FGF18", 
                  "FGF4", "FGFBP1", "FOSL1", "FSCN1", "FST", "FZD7", "GBX2", "HES1", "HNF1A", "ID2", "JAG1", "JUN", "KRT5", "L1CAM","LAMC2", "LEF1", "LGR5", "MMP14", 
                  "MMP7", "MYC", "MYCBP", "NEDD9", "NEUROD1", "NEUROG1", "NOS2", "NOTCH2", "NRCAM", "PDE2A", "PLAU", 
@@ -209,7 +236,10 @@ genesOfInterest <- c("ABCB1", "AFF3", "AXIN2", "BCL2L2", "BIRC5", "CCND1", "CDC2
                  "YY1AP1") # known B-catenin targets (those reported on Nusse lab website + Herbst et al 2014 paper + PDE2A + AFF3)
 analysis <- "BcatMutWt"
 
-pdf(file=paste0(outPath, "BoxplotExpr_allPublicACCDatasets_",analysis,"_AvgProbes_KnownBCateninTargets.pdf"), width=10, height = 10)
+### PLOT WITHOUT CONTROLS LEFEVRE DATASET
+input_boxplot_Lefevre <- input_boxplot_Lefevre[input_boxplot_Lefevre$BcatStatus %in% c("expressed","repressed"),]
+input_boxplot_Lefevre$BcatStatus <- factor(input_boxplot_Lefevre$BcatStatus, levels=c("expressed","repressed"))
+pdf(file=paste0(outPath, "BoxplotExpr_allPublicACCDatasets_",analysis,"_AvgProbes_KnownBCateninTargets_LefevreNoControls.pdf"), paper='A4', width=10, height = 10)
 for(gene in genesOfInterest){
   print(gene)
   foundAssie <- nrow(input_boxplot_Assie[input_boxplot_Assie$GeneSymbol == gene,])
@@ -220,12 +250,32 @@ for(gene in genesOfInterest){
     tcga <- plotTCGA(input_boxplot=input_boxplot_tcga, gene=gene, analysis=analysis)
     Assie <- plotAssie(input_boxplot=input_boxplot_Assie, gene=gene, analysis=analysis)
     Heaton <- plotHeaton(input_boxplot=input_boxplot_Heaton, gene=gene, analysis=analysis)
-    Lefevre <- plotLefevre(input_boxplot=input_boxplot_Lefevre, gene=gene, n_expr=3, n_repr=3, n_expr_ctrlshRNA_noDoxy=1, n_expr_ctrlshRNA_withDoxy=1)
-    title1=text_grob(gene, size = 20, face = "bold") 
+    Lefevre <- plotLefevre_noControls(input_boxplot=input_boxplot_Lefevre, gene=gene, n_expr=3, n_repr=3)
+    title1=text_grob(gene, size = 20, face = "bold")
     print(grid.arrange(tcga,Assie,Heaton,Lefevre, nrow=2, ncol=2, top=title1))
   }
 }
 dev.off()
+
+## DEPRECATED: WITH CONTROLS LEFEVRE DATASET
+#pdf(file=paste0(outPath, "BoxplotExpr_allPublicACCDatasets_",analysis,"_AvgProbes_KnownBCateninTargets.pdf"), width=10, height = 10)
+#for(gene in genesOfInterest){
+ # print(gene)
+ # foundAssie <- nrow(input_boxplot_Assie[input_boxplot_Assie$GeneSymbol == gene,])
+ # foundHeaton <- nrow(input_boxplot_Heaton[input_boxplot_Heaton$GeneSymbol == gene,])
+ # foundTcga <- nrow(input_boxplot_tcga[input_boxplot_tcga$GeneSymbol == gene,])
+ # foundLefevre<- nrow(input_boxplot_Lefevre[input_boxplot_Lefevre$GeneSymbol == gene,])
+ # if( (foundAssie>0) & (foundHeaton>0) & (foundTcga>0) & (foundLefevre>0) ){
+ #   tcga <- plotTCGA(input_boxplot=input_boxplot_tcga, gene=gene, analysis=analysis)
+ #   Assie <- plotAssie(input_boxplot=input_boxplot_Assie, gene=gene, analysis=analysis)
+ #   Heaton <- plotHeaton(input_boxplot=input_boxplot_Heaton, gene=gene, analysis=analysis)
+ #   Lefevre <- plotLefevre(input_boxplot=input_boxplot_Lefevre, gene=gene, n_expr=3, n_repr=3, n_expr_ctrlshRNA_noDoxy=1, n_expr_ctrlshRNA_withDoxy=1)
+ #   title1=text_grob(gene, size = 20, face = "bold") 
+ #   print(grid.arrange(tcga,Assie,Heaton,Lefevre, nrow=2, ncol=2, top=title1))
+ #}
+#}
+#dev.off()
+
 
 # Plot expression other genes of interest ------------------------------
 genesOfInterest <- c("MYC","CDK6","DACH1","ABR","EFNA3","FAM169A","JARID2","LTBP1","SYTL2")
